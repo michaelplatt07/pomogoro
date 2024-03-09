@@ -22,3 +22,7 @@ go.work
 
 # Ignore the files in the library folder
 library/*
+# Ignore executable
+pomogoro
+# Ignore the settings file
+settings.json
