@@ -9,7 +9,7 @@ import (
     "strconv"
     
     // Internal imports
-    "github.com/michaelplatt07/pomodoro"
+    "pomogoro/internal/pomodoro"
 
 	// Gui imports
 	"fyne.io/fyne/v2"
@@ -295,7 +295,7 @@ func main() {
 
 }
 
-func createPomodoroWindow(app fyne.App, pt *PomodoroTimer) {
+func createPomodoroWindow(app fyne.App, pt *pomodoro.PomodoroTimer) {
     newPomodoroWindow := app.NewWindow("New Pomodoro")
 
     pomodoroNameLabel := widget.NewLabel("Pomodoro name: ")
@@ -407,8 +407,8 @@ func readLibrary() {
     
 }
 
-func createPomodoroTimer() *PomodoroTimer {
-    pt := &PomodoroTimer{
+func createPomodoroTimer() *pomodoro.PomodoroTimer {
+    pt := &pomodoro.PomodoroTimer{
         IsRunning: false,
         InBreakMode: false,
         
