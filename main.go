@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"time"
     "strconv"
     
     // Internal imports
     "pomogoro/internal/pomodoro"
+    "pomogoro/internal/music"
 
 	// Gui imports
 	"fyne.io/fyne/v2"
@@ -19,17 +19,12 @@ import (
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
-
-	// MP3 imports
-	"github.com/hajimehoshi/go-mp3"
-	"github.com/hajimehoshi/oto/v2"
-
-	// ID3
-	"github.com/bogem/id3v2"
 )
+
 // TODO(map) List of things to correct
 // * Move everything to separate modules to make code nicer and better
-// * Fill circle based on percentage of time ran
+// * Figure out a nice way to introduce playing music
+// *Fill circle based on percentage of time ran
 // * Don't allow for going over the total number of iterations
 // * Automatically start the timer when switching between focus and relax periods
 // * Include text to show if it is focus time or relax time
@@ -43,28 +38,6 @@ type Settings struct {
     LibraryPath string
     AutoPlay bool
     Shuffle bool
-}
-
-// Represents a song and its current state and player
-type Song struct {
-    Name string
-    IsPaused bool
-    Player oto.Player
-    Tag *id3v2.Tag
-}
-
-// Queue for a list of songs and an index to track
-type Queue struct {
-    Songs []Song
-    CurrIdx int
-}
-
-// Struct for displaying and altering values of the Song detials
-type SongDetails struct {
-    Title string
-    Artist string
-    Album string
-    Genre string
 }
 
 const (
@@ -93,11 +66,11 @@ var (
     settings Settings     
 
     // Delcare a Song instance that can be referenced through out the program as needed
-    currSong Song
-    currSongDetails SongDetails
+    // currSong music.Song
+    // currSongDetails music.SongDetails
 
     // Declare an empty queue
-    songQueue = Queue{CurrIdx: 0}
+    // songQueue = music.Queue{CurrIdx: 0}
 )
 
 func main() {
@@ -105,7 +78,8 @@ func main() {
     loadSettings(settingsFilePath)
 
     // Read the library to load the songs into the application
-    readLibrary()
+    library := music.Library{}
+    library.LoadLibrary(settings.LibraryPath)
 
 	myApp := app.New()
 	window := myApp.NewWindow(titleText)
@@ -137,13 +111,13 @@ func main() {
     libraryListLabel := widget.NewLabel(libraryListLabelText)
     libraryList := widget.NewList(
 		func() int {
-			return len(songQueue.Songs)
+			return len(library.Songs)
 		},
 		func() fyne.CanvasObject {
-			return widget.NewLabel(currSong.Name)
+			return widget.NewLabel(library.GetCurrentSong().Name)
 		},
 		func(i widget.ListItemID, o fyne.CanvasObject) {
-			o.(*widget.Label).SetText(songQueue.Songs[i].Name)
+			o.(*widget.Label).SetText(library.Songs[i].Name)
 		})
     libraryListLabelContainer := container.New(layout.NewGridWrapLayout(fyne.NewSize(50, 50)), libraryListLabel)
     libraryListContainer := container.New(layout.NewGridWrapLayout(fyne.NewSize(300, 400)), libraryList)
@@ -155,50 +129,63 @@ func main() {
     artistInput := widget.NewEntry()
     albumInput := widget.NewEntry()
     genreInput := widget.NewEntry()
-	titleInput.SetPlaceHolder(currSongDetails.Title)
-	artistInput.SetPlaceHolder(currSongDetails.Artist)
-	albumInput.SetPlaceHolder(currSongDetails.Album)
-	genreInput.SetPlaceHolder(currSongDetails.Genre)
+    // TODO(map) Move this out somewhere that makes sense
+    currentSong := library.GetCurrentSong()
+	titleInput.SetText(currentSong.Title())
+    artistInput.SetText(currentSong.Artist())
+    albumInput.SetText(currentSong.Album())
+    genreInput.SetText(currentSong.Genre())
+    titleInput.Refresh()
+    artistInput.Refresh()
+    albumInput.Refresh()
+    genreInput.Refresh()
+
     saveId3DataButton := widget.NewButton("Save", func() {
-		log.Println("Title was:", titleInput.Text)
-		log.Println("Artist was:", artistInput.Text)
-		log.Println("Album was:", albumInput.Text)
-		log.Println("Genre was:", genreInput.Text)
-        currSong.Tag.SetTitle(titleInput.Text)
-        currSong.Tag.SetArtist(artistInput.Text)
-        currSong.Tag.SetAlbum(albumInput.Text)
-        currSong.Tag.SetGenre(genreInput.Text)
-        if err := currSong.Tag.Save(); err != nil {
-		    log.Fatal("Error while saving a tag: ", err)
-	    }
+        currentSong.SaveDetails(
+            titleInput.Text,
+            artistInput.Text,
+            albumInput.Text,
+            genreInput.Text,
+        )
 	})
     songDetailsContainer := container.New(layout.NewVBoxLayout(), detailsLabel, titleInput, artistInput, albumInput, genreInput, saveId3DataButton)
     songDetailsParentContainer := container.New(layout.NewGridWrapLayout(fyne.NewSize(300, 400)), songDetailsContainer)
 
+    // TODO(map) Make this its own component to encapsulate
+    libraryList.Select(library.CurrIdx)
+    libraryList.Refresh()
 
     // Music controls
     prevButton := widget.NewButton(prevButtonText, func() {
         log.Println("Prev clicked")
         // TODO(map) This is totally not safe since it can go out of bounds. Temp measure
-        songQueue.CurrIdx = songQueue.CurrIdx - 1
-        libraryList.Select(songQueue.CurrIdx)
+        library.CurrIdx = library.CurrIdx - 1
+        libraryList.Select(library.CurrIdx)
         libraryList.Refresh()
-        if currSong != (Song{}) {
-            currSong.Player.Close()
-            currSong = Song{}
+        // TODO(map) This shouldn't start autoplaying if it wasn't playing before hand
+        // A few conditions to consider:
+        // If music is playing and button clicked, start playing after updating current song
+        // If music is paused and button clicked, don't start playing
+        // If music is stopped and button clicked, don't start playing
+        if currentSong.Player != nil { // Close the current player
+            currentSong.Player.Close()
+            currentSong = library.GetCurrentSong()
+
+            // Start the song because the previous song was playing
+            go currentSong.Play(settings.LibraryPath)
+        } else {
+            currentSong = library.GetCurrentSong()
         }
-        go playSong()
-        
-        // Update the struct for the song details so it's ready to be referenced
-        updateCurrentSongDetails()
+
         // Set the title to be displayed
-        currentSongPlaying.SetText(fmt.Sprintf("Currently Playing: %s by %s", currSongDetails.Title, currSongDetails.Artist))
+        currentSongPlaying.SetText(fmt.Sprintf("Currently Playing: %s by %s", currentSong.Title(), currentSong.Artist()))
         currentSongPlaying.Refresh()
+
         // Set the details and refresh
-        titleInput.SetText(currSongDetails.Title)
-        artistInput.SetText(currSongDetails.Artist)
-        albumInput.SetText(currSongDetails.Album)
-        genreInput.SetText(currSongDetails.Genre)
+        titleInput.SetText(currentSong.Title())
+        artistInput.SetText(currentSong.Artist())
+        albumInput.SetText(currentSong.Album())
+        genreInput.SetText(currentSong.Genre())
         titleInput.Refresh()
         artistInput.Refresh()
         albumInput.Refresh()
@@ -206,65 +193,71 @@ func main() {
     })
     playButton := widget.NewButton(playButtonText, func() {
         log.Println("Play clicked")
-        if currSong == (Song{}) {
+        if currentSong.Player == nil { // There is no Player set because the initial launch of the MP3 hasn't happened
             log.Println("No song set, playing song...")
-            libraryList.Select(songQueue.CurrIdx)
+            libraryList.Select(library.CurrIdx)
             libraryList.Refresh()
-            go playSong()
+            go currentSong.Play(settings.LibraryPath)
 
-            // Update the struct for the song details so it's ready to be referenced
-            updateCurrentSongDetails()
             // Set the title to be displayed
-            currentSongPlaying.SetText(fmt.Sprintf("Currently Playing: %s by %s", currSongDetails.Title, currSongDetails.Artist))
+            currentSongPlaying.SetText(fmt.Sprintf("Currently Playing: %s by %s", currentSong.Title(), currentSong.Artist()))
             currentSongPlaying.Refresh()
+
             // Set the details and refresh
-            titleInput.SetText(currSongDetails.Title)
-            artistInput.SetText(currSongDetails.Artist)
-            albumInput.SetText(currSongDetails.Album)
-            genreInput.SetText(currSongDetails.Genre)
+            titleInput.SetText(currentSong.Title())
+            artistInput.SetText(currentSong.Artist())
+            albumInput.SetText(currentSong.Album())
+            genreInput.SetText(currentSong.Genre())
             titleInput.Refresh()
             artistInput.Refresh()
             albumInput.Refresh()
             genreInput.Refresh()
-        } else if currSong.Player.IsPlaying() {
+        } else if currentSong.Player.IsPlaying() {
             log.Println("Pausing song...")
-            currSong.Player.Pause()
-            currSong.IsPaused = true
-        } else if !currSong.Player.IsPlaying() && currSong.IsPaused {
+            currentSong.Player.Pause()
+            currentSong.IsPaused = true
+        } else if !currentSong.Player.IsPlaying() && currentSong.IsPaused {
             log.Println("Resuming song...")
-            currSong.Player.Play()
-            currSong.IsPaused = false
+            currentSong.Player.Play()
+            currentSong.IsPaused = false
         }
-        
     })
     stopButton := widget.NewButton(stopButtonText, func() {
         log.Println("Stop clicked")
-        currSong.Player.Close()
-        currSong = Song{}
+        currentSong.Player.Close()
+        currentSong = library.GetCurrentSong()
         currentSongPlaying.SetText("Currently Playing: ")
     })
     nextButton := widget.NewButton(nextButtonText, func() {
         log.Println("Next clicked")
         // TODO(map) This is totally not safe since it can go out of bounds. Temp measure
-        songQueue.CurrIdx = songQueue.CurrIdx + 1
-        libraryList.Select(songQueue.CurrIdx)
+        library.CurrIdx = library.CurrIdx + 1
+        libraryList.Select(library.CurrIdx)
         libraryList.Refresh()
-        if currSong != (Song{}) {
-            currSong.Player.Close()
-            currSong = Song{}
-        }
-        go playSong()
+        // TODO(map) This shouldn't start autoplaying if it wasn't playing before hand
+        // A few conditions to consider:
+        // If music is playing and button clicked, start playing after updating current song
+        // If music is paused and button clicked, don't start playing
+        // If music is stopped and button clicked, don't start playing
+        if currentSong.Player != nil { // Close the current player
+            currentSong.Player.Close()
+            currentSong = library.GetCurrentSong()
 
-        // Update the struct for the song details so it's ready to be referenced
-        updateCurrentSongDetails()
+            // Start the song because the previous song was playing
+            go currentSong.Play(settings.LibraryPath)
+        } else {
+            currentSong = library.GetCurrentSong()
+        }
+
+        
         // Set the title to be displayed
-        currentSongPlaying.SetText(fmt.Sprintf("Currently Playing: %s by %s", currSongDetails.Title, currSongDetails.Artist))
+        currentSongPlaying.SetText(fmt.Sprintf("Currently Playing: %s by %s", currentSong.Title(), currentSong.Artist()))
         currentSongPlaying.Refresh()
         // Set the details and refresh
-        titleInput.SetText(currSongDetails.Title)
-        artistInput.SetText(currSongDetails.Artist)
-        albumInput.SetText(currSongDetails.Album)
-        genreInput.SetText(currSongDetails.Genre)
+        titleInput.SetText(currentSong.Title())
+        artistInput.SetText(currentSong.Artist())
+        albumInput.SetText(currentSong.Album())
+        genreInput.SetText(currentSong.Genre())
         titleInput.Refresh()
         artistInput.Refresh()
         albumInput.Refresh()
@@ -288,6 +281,7 @@ func main() {
 
     // Parent container
     content := container.New(layout.NewVBoxLayout(), toolbar, pomodoroTimer.PomodoroTimerCanvas.TopLevelContainer, descriptionRow, libraryRow, controlsRowParent)
+    // content := container.New(layout.NewVBoxLayout(), toolbar, pomodoroTimer.PomodoroTimerCanvas.TopLevelContainer, descriptionRow, libraryRow)
 
 	window.SetContent(content)
 	window.Resize(fyne.NewSize(width, height))
@@ -389,24 +383,6 @@ func saveSettings(pathToSettings string, settings Settings) {
 	_ = os.WriteFile(pathToSettings, file, 0644)
 }
 
-func readLibrary() {
-    songs, err := os.ReadDir(settings.LibraryPath)
-    if err != nil {
-        panic(err)
-    }
-    
-   songQueue = Queue{
-        Songs: []Song{},
-        CurrIdx: 0,
-    }
-
-    for _, song := range songs {
-        log.Printf("Adding song %s to queue", song.Name())
-        songQueue.Songs = append(songQueue.Songs, Song{Name: song.Name(), IsPaused: false})
-    }
-    
-}
-
 func createPomodoroTimer() *pomodoro.PomodoroTimer {
     pt := &pomodoro.PomodoroTimer{
         IsRunning: false,
@@ -419,66 +395,3 @@ func createPomodoroTimer() *pomodoro.PomodoroTimer {
 
     return pt
 }
-
-func updateCurrentSongDetails() {
-    // Update the currSong variable so the program can reference it when needed for controls
-    currSong = songQueue.Songs[songQueue.CurrIdx]
-
-    // Update the current song tag details
-    tag, err := id3v2.Open(settings.LibraryPath + "/" + songQueue.Songs[songQueue.CurrIdx].Name, id3v2.Options{Parse: true})
-        if err != nil {
-            log.Println("Error reading ID3 tag")
-            panic(err)
-        }
-    currSong.Tag = tag
-
-    currSongDetails = SongDetails{
-        Title: tag.Title(),
-        Artist: tag.Artist(),
-        Album: tag.Album(),
-        Genre: tag.Genre(),
-    }
-}
-
-func playSong() {
-    // Open the file that is associated with the currently selected song in the queue
-    f, err := os.Open(settings.LibraryPath + "/" + songQueue.Songs[songQueue.CurrIdx].Name)
-
-	if err != nil {
-        log.Println("Err opening file")
-		panic(err)
-	}
-	defer f.Close()
-
-	d, err := mp3.NewDecoder(f)
-	if err != nil {
-        log.Println("Err setting up decoder")
-		panic(err)
-	}
-
-	c, ready, err := oto.NewContext(d.SampleRate(), 2, 2)
-	if err != nil {
-		panic(err)
-	}
-	<-ready
-
-	p := c.NewPlayer(d)
-	defer p.Close()
-    log.Println("Playing song")
-	p.Play()
-
-    // Assign the player so the controls works
-    currSong.Player = p
-
-    // TODO(map) Apply volume adjust
-    p.SetVolume(0.2)
-
-    for {
-		time.Sleep(time.Second)
-		if !p.IsPlaying() && !currSong.IsPaused {
-			break
-		}
-	}
-
-}
-
