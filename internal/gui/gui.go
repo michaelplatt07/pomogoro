@@ -46,6 +46,7 @@ type PomodoroCreationWindow struct {
 func NewPomodoroCreationWindow(app fyne.App, p *pomodoro.PomodoroTimer) *PomodoroCreationWindow {
 	// This will initialize and build the window and provide links to the fields that would be used to retrieve input
 	// or modify values elsewhere
+	pomodoroWindow := app.NewWindow("New Pomodoro")
 	focusTimeLabel := widget.NewLabel("Enter focus time in minutes: ")
 	focusTimeLabelContainer := container.New(
 		layout.NewGridWrapLayout(fyne.NewSize(200, 40)),
@@ -79,16 +80,24 @@ func NewPomodoroCreationWindow(app fyne.App, p *pomodoro.PomodoroTimer) *Pomodor
 		iterationTimeText,
 	)
 
-	createTimerButton := widget.NewButton("Create new Timer", func() {
-		fmt.Println("Starting new Pomodoro Timer")
-		// TODO(map) Error handling here
-		focusTime, _ := strconv.Atoi(focusTimeText.Text)
-		relaxTime, _ := strconv.Atoi(relaxTimeText.Text)
-		iterationTime, _ := strconv.Atoi(iterationTimeText.Text)
-		p.SetSettings(focusTime, relaxTime, iterationTime)
-		p.RestartTimer()
-		p.UpdateTimerText()
-		p.UpdateIterationText()
+	createTimerButton := widget.NewButton("Create Timer", func() {
+		dialog.ShowConfirm(
+			"Confirm",
+			"Do you want to create this timer? Current timer will be overridden",
+			func(confirm bool) {
+				fmt.Println("Starting new Pomodoro Timer")
+				// TODO(map) Error handling here
+				focusTime, _ := strconv.Atoi(focusTimeText.Text)
+				relaxTime, _ := strconv.Atoi(relaxTimeText.Text)
+				iterationTime, _ := strconv.Atoi(iterationTimeText.Text)
+				p.SetSettings(focusTime, relaxTime, iterationTime)
+				p.RestartTimer()
+				p.UpdateTimerText()
+				p.UpdateIterationText()
+				pomodoroWindow.Close()
+			},
+			pomodoroWindow,
+		)
 	})
 
 	timerButtonContainer := container.New(
@@ -109,7 +118,7 @@ func NewPomodoroCreationWindow(app fyne.App, p *pomodoro.PomodoroTimer) *Pomodor
 	content := container.New(layout.NewVBoxLayout(), pomodoroInfoContainer, timerButtonContainer)
 
 	return &PomodoroCreationWindow{
-		Window:             app.NewWindow("New Pomodoro"),
+		Window:             pomodoroWindow,
 		Container:          content,
 		FocusTimeInput:     focusTimeText,
 		RelaxTimeInput:     relaxTimeText,
