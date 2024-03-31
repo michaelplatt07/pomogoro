@@ -128,7 +128,7 @@ type SettingsWindow struct {
 }
 
 func NewSettingsWindow(app fyne.App, s *pomoapp.Settings) *SettingsWindow {
-	settingsWindow := app.NewWindow("Setttings")
+	settingsWindow := app.NewWindow("Settings")
 
 	// Widget creation
 	libraryPathLabel := widget.NewLabel("Library path: ")
@@ -178,9 +178,6 @@ func NewSettingsWindow(app fyne.App, s *pomoapp.Settings) *SettingsWindow {
 	saveRow := container.New(layout.NewGridWrapLayout(fyne.NewSize(50, 50)), saveButton)
 
 	content := container.New(layout.NewVBoxLayout(), libraySettingsRow, playSettingsRow, saveRow)
-	//    settingsWindow.SetContent(content)
-	// settingsWindow.Resize(fyne.NewSize(400, 100))
-	// settingsWindow.Show()
 
 	return &SettingsWindow{
 		Window:    settingsWindow,
@@ -451,7 +448,6 @@ func CreateNewToolbar(
 		}),
 		widget.NewToolbarSpacer(),
 		widget.NewToolbarAction(theme.SettingsIcon(), func() {
-			// createSettingsWindow(app)
 			pomodoroSettingsWindow := NewSettingsWindow(app, appSettings)
 			pomodoroSettingsWindow.Render()
 		}),
