@@ -347,28 +347,27 @@ func NewMusicControls(
 ) *MusicControls {
 	prevButton := widget.NewButton("Prev", func() {
 		log.Println("Prev clicked")
-		// TODO(map) This shouldn't start autoplaying if it wasn't playing before hand
-		// A few conditions to consider:
-		// If music is playing and button clicked, start playing after updating current song
-		// If music is paused and button clicked, don't start playing
-		// If music is stopped and button clicked, don't start playing
-
-		// Case of current song is actually playing and has a player attached
-		if library.CurrentSong.Player != nil {
-			// Close the current player
-			library.CurrentSong.Player.Close()
-
-			// TODO(map) This is totally not safe since it can go out of bounds. Temp measure
-			// Update the place in the library the song is playing
-			library.DecIndex()
-			libraryView.UpdateSelected()
-
-			// Start the song because the previous song was playing
-			go library.CurrentSong.Play(settings.LibraryPath)
+		if library.CurrIdx == 0 {
+			// Do nothing because we can't decrement
+			fmt.Println("Cannot go to previous song")
 		} else {
-			// Otherwise just update and don't start paying automatically
-			library.DecIndex()
-			libraryView.UpdateSelected()
+			// Case of current song is actually playing and has a player attached
+			if library.CurrentSong.Player != nil {
+				// Close the current player
+				library.CurrentSong.Player.Close()
+
+				// TODO(map) This is totally not safe since it can go out of bounds. Temp measure
+				// Update the place in the library the song is playing
+				library.DecIndex()
+				libraryView.UpdateSelected()
+
+				// Start the song because the previous song was playing
+				go library.CurrentSong.Play(settings.LibraryPath)
+			} else {
+				// Otherwise just update and don't start paying automatically
+				library.DecIndex()
+				libraryView.UpdateSelected()
+			}
 		}
 	})
 	playButton := widget.NewButton("Play", func() {
@@ -413,28 +412,27 @@ func NewMusicControls(
 	})
 	nextButton := widget.NewButton("Next", func() {
 		log.Println("Next clicked")
-		// TODO(map) This shouldn't start autoplaying if it wasn't playing before hand
-		// A few conditions to consider:
-		// If music is playing and button clicked, start playing after updating current song
-		// If music is paused and button clicked, don't start playing
-		// If music is stopped and button clicked, don't start playing
-
-		// Case of current song is actually playing and has a player attached
-		if library.CurrentSong.Player != nil {
-			// Close the current player
-			library.CurrentSong.Stop()
-
-			// TODO(map) This is totally not safe since it can go out of bounds. Temp measure
-			// Update the place in the library the song is playing
-			library.IncIndex()
-			libraryView.UpdateSelected()
-
-			// Start the song because the previous song was playing
-			go library.CurrentSong.Play(settings.LibraryPath)
+		if library.CurrIdx+1 >= len(library.Songs) {
+			// Do nothing because we can't decrement
+			fmt.Println("Cannot go to next song")
 		} else {
-			// Otherwise just update and don't start paying automatically
-			library.IncIndex()
-			libraryView.UpdateSelected()
+			// Case of current song is actually playing and has a player attached
+			if library.CurrentSong.Player != nil {
+				// Close the current player
+				library.CurrentSong.Stop()
+
+				// TODO(map) This is totally not safe since it can go out of bounds. Temp measure
+				// Update the place in the library the song is playing
+				library.IncIndex()
+				libraryView.UpdateSelected()
+
+				// Start the song because the previous song was playing
+				go library.CurrentSong.Play(settings.LibraryPath)
+			} else {
+				// Otherwise just update and don't start paying automatically
+				library.IncIndex()
+				libraryView.UpdateSelected()
+			}
 		}
 	})
 
