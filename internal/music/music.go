@@ -89,6 +89,11 @@ func (song *Song) Play(libraryPath string) {
 	}
 }
 
+func (song *Song) Stop() {
+	song.Player.Close()
+	song.Player = nil
+}
+
 // Queue for a list of songs and an index to track
 type Queue struct {
 	Songs   []Song
@@ -135,8 +140,10 @@ func (library *Library) GetCurrentSong() Song {
 
 func (library *Library) IncIndex() {
 	library.CurrIdx += 1
+	library.CurrentSong = library.Songs[library.CurrIdx]
 }
 
 func (library *Library) DecIndex() {
 	library.CurrIdx -= 1
+	library.CurrentSong = library.Songs[library.CurrIdx]
 }

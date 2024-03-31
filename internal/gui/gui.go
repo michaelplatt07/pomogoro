@@ -330,9 +330,9 @@ func NewMusicControls(
 		// If music is stopped and button clicked, don't start playing
 
 		// Case of current song is actually playing and has a player attached
-		if library.GetCurrentSong().Player != nil {
+		if library.CurrentSong.Player != nil {
 			// Close the current player
-			library.GetCurrentSong().Player.Close()
+			library.CurrentSong.Player.Close()
 
 			// TODO(map) This is totally not safe since it can go out of bounds. Temp measure
 			// Update the place in the library the song is playing
@@ -340,17 +340,12 @@ func NewMusicControls(
 			libraryView.UpdateSelected()
 
 			// Start the song because the previous song was playing
-			song := library.GetCurrentSong()
-			go song.Play(libraryPath)
+			go library.CurrentSong.Play(libraryPath)
 		} else {
 			// Otherwise just update and don't start paying automatically
 			library.DecIndex()
 			libraryView.UpdateSelected()
 		}
-
-		// Set the title to be displayed
-		// currentSongPlaying.SetText(fmt.Sprintf("Currently Playing: %s by %s", currentSong.Title(), currentSong.Artist()))
-		// currentSongPlaying.Refresh()
 	})
 	playButton := widget.NewButton("Play", func() {
 		log.Println("Play clicked")
@@ -361,9 +356,6 @@ func NewMusicControls(
 			// Start the song because the previous song was playing
 			go library.CurrentSong.Play(libraryPath)
 
-			// Set the title to be displayed
-			// currentSongPlaying.SetText(fmt.Sprintf("Currently Playing: %s by %s", currentSong.Title(), currentSong.Artist()))
-			// currentSongPlaying.Refresh()
 		} else if library.CurrentSong.Player.IsPlaying() { // Case of song is currently playing
 			log.Println("Pausing song...")
 			library.CurrentSong.Player.Pause()
@@ -376,7 +368,7 @@ func NewMusicControls(
 	})
 	stopButton := widget.NewButton("Stop", func() {
 		log.Println("Stop clicked")
-		library.CurrentSong.Player.Play()
+		library.CurrentSong.Stop()
 	})
 	nextButton := widget.NewButton("Next", func() {
 		log.Println("Next clicked")
@@ -387,9 +379,9 @@ func NewMusicControls(
 		// If music is stopped and button clicked, don't start playing
 
 		// Case of current song is actually playing and has a player attached
-		if library.GetCurrentSong().Player != nil {
+		if library.CurrentSong.Player != nil {
 			// Close the current player
-			library.GetCurrentSong().Player.Close()
+			library.CurrentSong.Stop()
 
 			// TODO(map) This is totally not safe since it can go out of bounds. Temp measure
 			// Update the place in the library the song is playing
@@ -397,18 +389,12 @@ func NewMusicControls(
 			libraryView.UpdateSelected()
 
 			// Start the song because the previous song was playing
-			library.CurrentSong.Player.Play()
-			// song := library.GetCurrentSong()
-			// go song.Play(libraryPath)
+			go library.CurrentSong.Play(libraryPath)
 		} else {
 			// Otherwise just update and don't start paying automatically
 			library.IncIndex()
 			libraryView.UpdateSelected()
 		}
-
-		// Set the title to be displayed
-		// currentSongPlaying.SetText(fmt.Sprintf("Currently Playing: %s by %s", currentSong.Title(), currentSong.Artist()))
-		// currentSongPlaying.Refresh()
 	})
 
 	// Containers around the buttons to ensure their size doesn't grow beyond what is desired
