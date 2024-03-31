@@ -81,7 +81,7 @@ func main() {
 	songDetailsView := gui.NewSongDetailsView(detailsLabelText)
 
 	// Library View
-	libraryView := gui.NewLibraryView(libraryListLabelText, &library, songDetailsView)
+	libraryView := gui.NewLibraryView(libraryListLabelText, &library, songDetailsView, settings)
 
 	// Info
 	descriptionRow := container.New(

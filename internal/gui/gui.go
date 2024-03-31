@@ -27,6 +27,7 @@ func NewGui(
 	app fyne.App,
 	pomodoroTimer *pomodoro.PomodoroTimer,
 	appSettings *pomoapp.Settings,
+	library *music.Library,
 ) *Gui {
 	toolbar := CreateNewToolbar(app, pomodoroTimer, appSettings)
 	return &Gui{
@@ -202,6 +203,7 @@ func NewLibraryView(
 	labelText string,
 	library *music.Library,
 	songDetailsView *SongDetailsView,
+	settings *pomoapp.Settings,
 ) *LibraryView {
 	libraryListLabel := widget.NewLabel(labelText)
 	libraryList := widget.NewList(
@@ -236,6 +238,19 @@ func NewLibraryView(
 		SongDetailsView: songDetailsView,
 	}
 	l.UpdateSelected()
+
+	libraryList.OnSelected = func(index int) {
+		// Kill the currently playing song
+		if library.CurrentSong.Player != nil && library.CurrentSong.Player.IsPlaying() {
+			library.CurrentSong.Stop()
+		}
+
+		// Update the index and new song and start playing
+		library.CurrIdx = index
+		library.CurrentSong = library.Songs[library.CurrIdx]
+		l.UpdateSelected()
+		go library.CurrentSong.Play(settings.LibraryPath)
+	}
 
 	return &l
 }
