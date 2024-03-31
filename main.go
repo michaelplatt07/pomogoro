@@ -20,7 +20,6 @@ import (
 // * Figure out a nice way to introduce playing music
 // * Fill circle based on percentage of time ran
 // * Don't allow for going over the total number of iterations
-// * Automatically start the timer when switching between focus and relax periods
 // * Include text to show if it is focus time or relax time
 // * Add ability to save timer and link playlist
 // * Toggle text of the button between play and pause

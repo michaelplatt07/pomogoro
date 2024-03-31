@@ -50,35 +50,36 @@ func NewPomodoroTimer(library *music.Library, settings *pomoapp.Settings) *Pomod
 
 func (pt *PomodoroTimer) StartTimer() {
 	pt.IsRunning = true
-	// TODO(map) This is not ideal because it will always wait one additional second before actually pausing the timer.
-	for pt.IsRunning && pt.CurrentTimer > 0 {
-		fmt.Printf("Current timer = %d", pt.CurrentTimer)
-		time.Sleep(time.Second * 1)
-		pt.CurrentTimer -= 1
-		pt.UpdateTimerText()
-	}
-
-	// If this is reached then the timer has finished and additional work is to be done.
-	if pt.CurrentTimer <= 0 {
-		// Conditionally increment the counter only when finishing a focus period and refresh the text
-		if !pt.InBreakMode {
-			pt.PomodoroSettings.IterationCount += 1
-			pt.UpdateIterationText()
-		}
-
-		// Switch modes
-		pt.InBreakMode = !pt.InBreakMode
-
-		// Update the timer with the appropriate value after the previous timer finishes
-		if pt.InBreakMode {
-			pt.CurrentTimer = pt.PomodoroSettings.StartRelaxTime
+	for pt.IsRunning {
+		if pt.CurrentTimer > 0 {
+			// Update timer
+			fmt.Printf("Current timer = %d", pt.CurrentTimer)
+			time.Sleep(time.Second * 1)
+			pt.CurrentTimer -= 1
+			pt.UpdateTimerText()
 		} else {
-			pt.CurrentTimer = pt.PomodoroSettings.StartFocusTime
-		}
-		pt.UpdateTimerText()
+			// Conditionally increment the counter only when finishing a focus period and refresh the text
+			if !pt.InBreakMode {
+				pt.PomodoroSettings.IterationCount += 1
+				pt.UpdateIterationText()
+			}
 
-		// Reset the timer flag
-		pt.IsRunning = false
+			// Switch modes
+			pt.InBreakMode = !pt.InBreakMode
+
+			// Update the timer with the appropriate value after the previous timer finishes
+			if pt.InBreakMode {
+				pt.CurrentTimer = pt.PomodoroSettings.StartRelaxTime
+				pt.PomodoroTimerCanvas.ModeText.Text = "Relax"
+				pt.PomodoroTimerCanvas.ModeText.Refresh()
+			} else {
+				pt.CurrentTimer = pt.PomodoroSettings.StartFocusTime
+				pt.PomodoroTimerCanvas.ModeText.Text = "Focus"
+				pt.PomodoroTimerCanvas.ModeText.Refresh()
+			}
+			pt.UpdateTimerText()
+
+		}
 	}
 }
 
@@ -91,6 +92,8 @@ func (pt *PomodoroTimer) RestartTimer() {
 	pt.PomodoroSettings.IterationCount = 0
 	pt.UpdateTimerText()
 	pt.UpdateIterationText()
+	pt.PomodoroTimerCanvas.ModeText.Text = "Focus"
+	pt.PomodoroTimerCanvas.ModeText.Refresh()
 }
 
 func (pt *PomodoroTimer) SetSettings(startFocusTime int, startRelaxTime int, iterations int) {
@@ -99,8 +102,9 @@ func (pt *PomodoroTimer) SetSettings(startFocusTime int, startRelaxTime int, ite
 	pomodoroSettings := PomodoroSettings{
 		// TODO(map) Uncomment me after testing
 		// StartFocusTime: startFocusTime * 60,
-		StartFocusTime:   startFocusTime,
-		StartRelaxTime:   startRelaxTime * 60,
+		StartFocusTime: startFocusTime,
+		// StartRelaxTime:   startRelaxTime * 60,
+		StartRelaxTime:   startRelaxTime,
 		Iterations:       iterations,
 		PauseDuringBreak: false,
 	}
@@ -135,6 +139,12 @@ func (pt *PomodoroTimer) CreateDefaultCanvas(library *music.Library, settings *p
 		layout.NewGridWrapLayout(fyne.NewSize(300, 300)),
 		canvas.NewCircle(color.RGBA{0, 0, 0, 255}),
 	)
+	modeText := canvas.NewText("Focus", color.RGBA{255, 255, 255, 255})
+	modeTextInnerContainer := container.New(
+		layout.NewGridWrapLayout(fyne.NewSize(100, 50)),
+		modeText,
+	)
+	modeTextContainer := container.New(layout.NewCenterLayout(), modeTextInnerContainer)
 	timerText := canvas.NewText("No Timer Created", color.RGBA{255, 255, 255, 255})
 	timerTextInnerContainer := container.New(
 		layout.NewGridWrapLayout(fyne.NewSize(100, 50)),
@@ -182,6 +192,7 @@ func (pt *PomodoroTimer) CreateDefaultCanvas(library *music.Library, settings *p
 	)
 	textContainer := container.New(
 		layout.NewVBoxLayout(),
+		modeTextContainer,
 		timerTextContainer,
 		iterationTextContainer,
 	)
@@ -200,6 +211,9 @@ func (pt *PomodoroTimer) CreateDefaultCanvas(library *music.Library, settings *p
 
 	pt.PomodoroTimerCanvas = PomodoroTimerCanvas{
 		CircleContainer:             circleContainer,
+		ModeText:                    modeText,
+		ModeTextInnerContainer:      modeTextInnerContainer,
+		ModeTextContainer:           modeTextContainer,
 		TimerText:                   timerText,
 		TimerTextInnerContainer:     timerTextInnerContainer,
 		TimerTextContainer:          timerTextContainer,
@@ -220,6 +234,11 @@ func (pt *PomodoroTimer) CreateDefaultCanvas(library *music.Library, settings *p
 type PomodoroTimerCanvas struct {
 	// Circle container to hold all the data and controls
 	CircleContainer *fyne.Container
+
+	// Text to display mode
+	ModeText               *canvas.Text
+	ModeTextInnerContainer *fyne.Container
+	ModeTextContainer      *fyne.Container
 
 	// Timer related components
 	TimerText               *canvas.Text
