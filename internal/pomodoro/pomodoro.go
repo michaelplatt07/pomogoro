@@ -50,7 +50,8 @@ func NewPomodoroTimer(library *music.Library, settings *pomoapp.Settings) *Pomod
 
 func (pt *PomodoroTimer) StartTimer() {
 	pt.IsRunning = true
-	for pt.IsRunning {
+	// TODO(map) Good enough for now but we should really count down the final break period too
+	for pt.IsRunning && pt.PomodoroSettings.IterationCount < pt.PomodoroSettings.Iterations {
 		if pt.CurrentTimer > 0 {
 			// Update timer
 			fmt.Printf("Current timer = %d", pt.CurrentTimer)
