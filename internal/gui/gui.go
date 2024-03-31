@@ -38,7 +38,6 @@ func NewGui(
 type PomodoroCreationWindow struct {
 	Window             fyne.Window
 	Container          *fyne.Container
-	NameInput          *widget.Entry
 	FocusTimeInput     *widget.Entry
 	RelaxTimeInput     *widget.Entry
 	IterationTimeInput *widget.Entry
@@ -47,17 +46,6 @@ type PomodoroCreationWindow struct {
 func NewPomodoroCreationWindow(app fyne.App, p *pomodoro.PomodoroTimer) *PomodoroCreationWindow {
 	// This will initialize and build the window and provide links to the fields that would be used to retrieve input
 	// or modify values elsewhere
-	pomodoroNameLabel := widget.NewLabel("Pomodoro name: ")
-	pomodoroNameLabelContainer := container.New(
-		layout.NewGridWrapLayout(fyne.NewSize(200, 40)),
-		pomodoroNameLabel,
-	)
-	pomodoroNameText := widget.NewEntry()
-	pomodoroNameTextContainer := container.New(
-		layout.NewGridWrapLayout(fyne.NewSize(200, 40)),
-		pomodoroNameText,
-	)
-
 	focusTimeLabel := widget.NewLabel("Enter focus time in minutes: ")
 	focusTimeLabelContainer := container.New(
 		layout.NewGridWrapLayout(fyne.NewSize(200, 40)),
@@ -108,13 +96,11 @@ func NewPomodoroCreationWindow(app fyne.App, p *pomodoro.PomodoroTimer) *Pomodor
 		createTimerButton,
 	)
 	textContainer := container.NewVBox(
-		pomodoroNameLabelContainer,
 		focusTimeLabelContainer,
 		relaxTimeLabelContainer,
 		iterationTimeLabelContainer,
 	)
 	inputContainer := container.NewVBox(
-		pomodoroNameTextContainer,
 		focusTimeTextContainer,
 		relaxTimeTextContainer,
 		iterationTimeTextContainer,
@@ -125,7 +111,6 @@ func NewPomodoroCreationWindow(app fyne.App, p *pomodoro.PomodoroTimer) *Pomodor
 	return &PomodoroCreationWindow{
 		Window:             app.NewWindow("New Pomodoro"),
 		Container:          content,
-		NameInput:          pomodoroNameText,
 		FocusTimeInput:     focusTimeText,
 		RelaxTimeInput:     relaxTimeText,
 		IterationTimeInput: iterationTimeText,
