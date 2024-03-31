@@ -35,6 +35,18 @@ type PomodoroTimer struct {
     PomodoroTimerCanvas PomodoroTimerCanvas // Canvas to draw the timer and access all components
 }
 
+func NewPomodoroTimer() *PomodoroTimer {
+    pt := &PomodoroTimer{
+        IsRunning: false,
+        InBreakMode: false,
+    }
+
+    pt.CreateDefaultCanvas()
+
+    return pt
+
+}
+
 func (pt *PomodoroTimer) StartTimer() {
     pt.IsRunning = true
    // TODO(map) This is not ideal because it will always wait one additional second before actually pausing the timer.

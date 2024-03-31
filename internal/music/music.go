@@ -102,6 +102,7 @@ type Queue struct {
 type Library struct {
     Songs []Song
     CurrIdx int
+    CurrentSong Song
 }
 
 func (library *Library) LoadLibrary(pathToLibrary string) {
@@ -122,8 +123,19 @@ func (library *Library) LoadLibrary(pathToLibrary string) {
     }
     
     log.Print("Finished loading library...")
+
+    // Set the current song as the first on
+    library.CurrentSong = library.Songs[library.CurrIdx]
 }
 
 func (library *Library) GetCurrentSong() Song {
     return library.Songs[library.CurrIdx]
+}
+
+func (library *Library) IncIndex() {
+    library.CurrIdx += 1
+}
+
+func (library *Library) DecIndex() {
+    library.CurrIdx -= 1
 }
