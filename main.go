@@ -62,7 +62,7 @@ func main() {
 
 	myApp := app.New()
 	window := myApp.NewWindow(titleText)
-	pomodoroTimer := pomodoro.NewPomodoroTimer()
+	pomodoroTimer := pomodoro.NewPomodoroTimer(&library, settings)
 
 	// Toolbar
 	toolbar := gui.CreateNewToolbar(myApp, pomodoroTimer, settings)

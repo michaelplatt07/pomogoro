@@ -89,6 +89,14 @@ func (song *Song) Play(libraryPath string) {
 	}
 }
 
+func (song *Song) Pause() {
+	song.Player.Pause()
+}
+
+func (song *Song) Resume() {
+	song.Player.Play()
+}
+
 func (song *Song) Stop() {
 	song.Player.Close()
 	song.Player = nil

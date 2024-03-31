@@ -3,6 +3,8 @@ package pomodoro
 import (
 	"fmt"
 	"image/color"
+	"pomogoro/internal/music"
+	"pomogoro/internal/pomoapp"
 	"time"
 
 	// Gui imports
@@ -35,13 +37,13 @@ type PomodoroTimer struct {
 	PomodoroTimerCanvas PomodoroTimerCanvas // Canvas to draw the timer and access all components
 }
 
-func NewPomodoroTimer() *PomodoroTimer {
+func NewPomodoroTimer(library *music.Library, settings *pomoapp.Settings) *PomodoroTimer {
 	pt := &PomodoroTimer{
 		IsRunning:   false,
 		InBreakMode: false,
 	}
 
-	pt.CreateDefaultCanvas()
+	pt.CreateDefaultCanvas(library, settings)
 
 	return pt
 }
@@ -128,7 +130,7 @@ func (pt *PomodoroTimer) UpdateIterationText() {
 	pt.PomodoroTimerCanvas.IterationText.Refresh()
 }
 
-func (pt *PomodoroTimer) CreateDefaultCanvas() {
+func (pt *PomodoroTimer) CreateDefaultCanvas(library *music.Library, settings *pomoapp.Settings) {
 	circleContainer := container.New(
 		layout.NewGridWrapLayout(fyne.NewSize(300, 300)),
 		canvas.NewCircle(color.RGBA{0, 0, 0, 255}),
@@ -148,8 +150,22 @@ func (pt *PomodoroTimer) CreateDefaultCanvas() {
 	playButton := widget.NewButton("Play", func() {
 		if !pt.IsRunning {
 			go pt.StartTimer()
+			if settings.LinkPlayers {
+				// TODO(map) Maybe this is bad to assume that there is no player if the song is not Paused because it
+				// can't have started then
+				if library.CurrentSong.IsPaused {
+					library.CurrentSong.Resume()
+					library.CurrentSong.IsPaused = false
+				} else {
+					go library.CurrentSong.Play(settings.LibraryPath)
+				}
+			}
 		} else {
 			pt.PauseTimer()
+			if settings.LinkPlayers {
+				library.CurrentSong.Pause()
+				library.CurrentSong.IsPaused = true
+			}
 		}
 	})
 	playButtonContainer := container.New(

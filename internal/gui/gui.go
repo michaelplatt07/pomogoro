@@ -12,7 +12,6 @@ import (
 
 	// Gui imports
 	"fyne.io/fyne/v2"
-	// "fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/layout"
@@ -366,14 +365,14 @@ func NewMusicControls(
 			}
 		} else if library.CurrentSong.Player.IsPlaying() { // Case of song is currently playing
 			log.Println("Pausing song...")
-			library.CurrentSong.Player.Pause()
+			library.CurrentSong.Pause()
 			library.CurrentSong.IsPaused = true
 
 			// Pause the pomodoro timer if the timer and music controls are linked
 			pomodoroTimer.PauseTimer()
 		} else if !library.CurrentSong.Player.IsPlaying() && library.CurrentSong.IsPaused { // Case where song is paused
 			log.Println("Resuming song...")
-			library.CurrentSong.Player.Play()
+			library.CurrentSong.Resume()
 			library.CurrentSong.IsPaused = false
 
 			// Resume the pomodoro timer if the timer and music controls are linked
