@@ -11,21 +11,35 @@ type Settings struct {
 	LibraryPath  string
 	AutoPlay     bool
 	Shuffle      bool
+	LinkPlayers  bool
 }
 
-func NewSettings(settingsPath string, libraryPath string, autoPlay bool, shuffle bool) *Settings {
+func NewSettings(
+	settingsPath string,
+	libraryPath string,
+	autoPlay bool,
+	shuffle bool,
+	linkPlayers bool,
+) *Settings {
 	return &Settings{
 		SettingsPath: settingsPath,
 		LibraryPath:  libraryPath,
 		AutoPlay:     autoPlay,
 		Shuffle:      shuffle,
+		LinkPlayers:  linkPlayers,
 	}
 }
 
-func (settings *Settings) Save(libraryPath string, autoPlayChecked bool, shuffleChecked bool) {
+func (settings *Settings) Save(
+	libraryPath string,
+	autoPlayChecked bool,
+	shuffleChecked bool,
+	linkPlayersChecked bool,
+) {
 	settings.LibraryPath = libraryPath
 	settings.AutoPlay = autoPlayChecked
 	settings.Shuffle = shuffleChecked
+	settings.LinkPlayers = linkPlayersChecked
 
 	// TODO(map) Handle errors gracefully
 	file, _ := json.MarshalIndent(settings, "", "    ")

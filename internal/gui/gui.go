@@ -143,12 +143,25 @@ func NewSettingsWindow(app fyne.App, s *pomoapp.Settings) *SettingsWindow {
 		s.Shuffle = checked
 	})
 	shuffleCheckBox.Checked = s.Shuffle
+	linkPlayersCheckBox := widget.NewCheck(
+		"Link Players (Pausing timer pauses music and vice versa)",
+		func(checked bool) {
+			s.Shuffle = checked
+		},
+	)
+	linkPlayersCheckBox.Checked = s.LinkPlayers
+
 	saveButton := widget.NewButton("Save", func() {
 		dialog.ShowConfirm(
 			"Confirm",
 			"Are you sure you want to save these settings?",
 			func(confirm bool) {
-				s.Save(libraryPath.Text, autoPlayCheckBox.Checked, shuffleCheckBox.Checked)
+				s.Save(
+					libraryPath.Text,
+					autoPlayCheckBox.Checked,
+					shuffleCheckBox.Checked,
+					linkPlayersCheckBox.Checked,
+				)
 				settingsWindow.Close()
 			},
 			settingsWindow,
@@ -157,7 +170,12 @@ func NewSettingsWindow(app fyne.App, s *pomoapp.Settings) *SettingsWindow {
 
 	// Create the rows
 	libraySettingsRow := container.New(layout.NewVBoxLayout(), libraryPathLabel, libraryPath)
-	playSettingsRow := container.New(layout.NewHBoxLayout(), autoPlayCheckBox, shuffleCheckBox)
+	playSettingsRow := container.New(
+		layout.NewHBoxLayout(),
+		autoPlayCheckBox,
+		shuffleCheckBox,
+		linkPlayersCheckBox,
+	)
 	saveRow := container.New(layout.NewGridWrapLayout(fyne.NewSize(50, 50)), saveButton)
 
 	content := container.New(layout.NewVBoxLayout(), libraySettingsRow, playSettingsRow, saveRow)
@@ -304,7 +322,8 @@ type MusicControls struct {
 func NewMusicControls(
 	library *music.Library,
 	libraryView *LibraryView,
-	libraryPath string,
+	settings *pomoapp.Settings,
+	pomodoroTimer *pomodoro.PomodoroTimer,
 ) *MusicControls {
 	prevButton := widget.NewButton("Prev", func() {
 		log.Println("Prev clicked")
@@ -325,7 +344,7 @@ func NewMusicControls(
 			libraryView.UpdateSelected()
 
 			// Start the song because the previous song was playing
-			go library.CurrentSong.Play(libraryPath)
+			go library.CurrentSong.Play(settings.LibraryPath)
 		} else {
 			// Otherwise just update and don't start paying automatically
 			library.DecIndex()
@@ -339,21 +358,38 @@ func NewMusicControls(
 			log.Println("No song set, playing song...")
 
 			// Start the song because the previous song was playing
-			go library.CurrentSong.Play(libraryPath)
+			go library.CurrentSong.Play(settings.LibraryPath)
 
+			// Start the pomodoro timer if the timer and music controls are linked
+			if settings.LinkPlayers {
+				go pomodoroTimer.StartTimer()
+			}
 		} else if library.CurrentSong.Player.IsPlaying() { // Case of song is currently playing
 			log.Println("Pausing song...")
 			library.CurrentSong.Player.Pause()
 			library.CurrentSong.IsPaused = true
+
+			// Pause the pomodoro timer if the timer and music controls are linked
+			pomodoroTimer.PauseTimer()
 		} else if !library.CurrentSong.Player.IsPlaying() && library.CurrentSong.IsPaused { // Case where song is paused
 			log.Println("Resuming song...")
 			library.CurrentSong.Player.Play()
 			library.CurrentSong.IsPaused = false
+
+			// Resume the pomodoro timer if the timer and music controls are linked
+			if settings.LinkPlayers {
+				go pomodoroTimer.StartTimer()
+			}
 		}
 	})
 	stopButton := widget.NewButton("Stop", func() {
 		log.Println("Stop clicked")
 		library.CurrentSong.Stop()
+
+		// Pause the pomodoro timer if the timer and music controls are linked
+		if settings.LinkPlayers {
+			pomodoroTimer.PauseTimer()
+		}
 	})
 	nextButton := widget.NewButton("Next", func() {
 		log.Println("Next clicked")
@@ -374,7 +410,7 @@ func NewMusicControls(
 			libraryView.UpdateSelected()
 
 			// Start the song because the previous song was playing
-			go library.CurrentSong.Play(libraryPath)
+			go library.CurrentSong.Play(settings.LibraryPath)
 		} else {
 			// Otherwise just update and don't start paying automatically
 			library.IncIndex()

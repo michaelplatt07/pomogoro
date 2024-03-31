@@ -50,7 +50,7 @@ const (
 	detailsLabelText     = "Song Details"
 )
 
-var settings = pomoapp.NewSettings(settingsFilePath, "", false, false)
+var settings = pomoapp.NewSettings(settingsFilePath, "", false, false, false)
 
 func main() {
 	// Load the settings for the application
@@ -92,7 +92,7 @@ func main() {
 		currentSongPlayingContainer,
 	)
 	// Control
-	controls := gui.NewMusicControls(&library, libraryView, settings.LibraryPath)
+	controls := gui.NewMusicControls(&library, libraryView, settings, pomodoroTimer)
 
 	// Parent container
 	content := container.New(
