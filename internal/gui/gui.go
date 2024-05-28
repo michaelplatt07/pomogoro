@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	// Internal imports
+	"pomogoro/internal/library"
 	"pomogoro/internal/music"
 	"pomogoro/internal/pomoapp"
 	"pomogoro/internal/pomodoro"
@@ -300,15 +301,8 @@ func NewSongDetailsView(labelText string) *SongDetailsView {
 
 	saveId3DataButton := widget.NewButton("Save", func() {
 		fmt.Println("TODO(map) Implement the song save here")
-		//     currentSong.SaveDetails(
-		//         titleInput.Text,
-		//         artistInput.Text,
-		//         albumInput.Text,
-		//         genreInput.Text,
-		//     )
 	})
 
-	// songDetailsContainer := container.New(layout.NewVBoxLayout(), detailsLabel, titleInput, artistInput, albumInput, genreInput)
 	songDetailsContainer := container.New(
 		layout.NewVBoxLayout(),
 		detailsLabel,
@@ -340,8 +334,7 @@ type MusicControls struct {
 }
 
 func NewMusicControls(
-	library *music.Library,
-	libraryView *LibraryView,
+	library *library.Library,
 	settings *pomoapp.Settings,
 	pomodoroTimer *pomodoro.PomodoroTimer,
 ) *MusicControls {
@@ -359,14 +352,12 @@ func NewMusicControls(
 				// TODO(map) This is totally not safe since it can go out of bounds. Temp measure
 				// Update the place in the library the song is playing
 				library.DecIndex()
-				libraryView.UpdateSelected()
 
 				// Start the song because the previous song was playing
-				go library.CurrentSong.Play(settings.LibraryPath)
+				go library.CurrentSong.Play(library.PlayNextSongChan)
 			} else {
 				// Otherwise just update and don't start paying automatically
 				library.DecIndex()
-				libraryView.UpdateSelected()
 			}
 		}
 	})
@@ -376,8 +367,13 @@ func NewMusicControls(
 		if library.CurrentSong.Player == nil {
 			log.Println("No song set, playing song...")
 
-			// Start the song because the previous song was playing
-			go library.CurrentSong.Play(settings.LibraryPath)
+			// Start playing the whole library if the flag is set to play the next song, otherwise just start the
+			// single song
+			if settings.AutoPlay {
+				go library.PlayLibrary()
+			} else {
+				go library.CurrentSong.Play(library.PlayNextSongChan)
+			}
 
 			// Start the pomodoro timer if the timer and music controls are linked
 			if settings.LinkPlayers {
@@ -386,10 +382,11 @@ func NewMusicControls(
 		} else if library.CurrentSong.Player.IsPlaying() { // Case of song is currently playing
 			log.Println("Pausing song...")
 			library.CurrentSong.Pause()
-			library.CurrentSong.IsPaused = true
 
 			// Pause the pomodoro timer if the timer and music controls are linked
-			pomodoroTimer.PauseTimer()
+			if settings.LinkPlayers {
+				pomodoroTimer.PauseTimer()
+			}
 		} else if !library.CurrentSong.Player.IsPlaying() && library.CurrentSong.IsPaused { // Case where song is paused
 			log.Println("Resuming song...")
 			library.CurrentSong.Resume()
@@ -424,14 +421,12 @@ func NewMusicControls(
 				// TODO(map) This is totally not safe since it can go out of bounds. Temp measure
 				// Update the place in the library the song is playing
 				library.IncIndex()
-				libraryView.UpdateSelected()
 
 				// Start the song because the previous song was playing
-				go library.CurrentSong.Play(settings.LibraryPath)
+				go library.CurrentSong.Play(library.PlayNextSongChan)
 			} else {
 				// Otherwise just update and don't start paying automatically
 				library.IncIndex()
-				libraryView.UpdateSelected()
 			}
 		}
 	})

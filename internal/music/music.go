@@ -102,12 +102,6 @@ func (song *Song) Stop() {
 	song.Player = nil
 }
 
-// Queue for a list of songs and an index to track
-type Queue struct {
-	Songs   []Song
-	CurrIdx int
-}
-
 // Library that will load up all the songs available to be played. Differs from Queue in that a Queue is a user defined
 // list of songs to play but Library is everything
 type Library struct {
