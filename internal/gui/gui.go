@@ -6,7 +6,9 @@ import (
 	"strconv"
 
 	// Internal imports
+	"pomogoro/internal/library"
 	"pomogoro/internal/music"
+	"pomogoro/internal/player"
 	"pomogoro/internal/pomoapp"
 	"pomogoro/internal/pomodoro"
 
@@ -204,15 +206,16 @@ func (p *SettingsWindow) Render() {
 type LibraryView struct {
 	LibraryList     *widget.List
 	Container       *fyne.Container
-	Library         *music.Library
+	Library         *library.Library
 	SongDetailsView *SongDetailsView
 }
 
 func NewLibraryView(
 	labelText string,
-	library *music.Library,
+	library *library.Library,
 	songDetailsView *SongDetailsView,
 	settings *pomoapp.Settings,
+	player *player.Player,
 ) *LibraryView {
 	libraryListLabel := widget.NewLabel(labelText)
 	libraryList := widget.NewList(
@@ -220,7 +223,7 @@ func NewLibraryView(
 			return len(library.Songs)
 		},
 		func() fyne.CanvasObject {
-			return widget.NewLabel(library.GetCurrentSong().Name)
+			return widget.NewLabel(library.CurrentSong.Name)
 		},
 		func(i widget.ListItemID, o fyne.CanvasObject) {
 			o.(*widget.Label).SetText(library.Songs[i].Name)
@@ -251,14 +254,14 @@ func NewLibraryView(
 	libraryList.OnSelected = func(index int) {
 		// Kill the currently playing song
 		if library.CurrentSong.Player != nil && library.CurrentSong.Player.IsPlaying() {
-			library.CurrentSong.Stop()
+			library.CurrentSong.Stop(false) // TODO(map) Is this right?
 		}
 
 		// Update the index and new song and start playing
 		library.CurrIdx = index
 		library.CurrentSong = library.Songs[library.CurrIdx]
 		l.UpdateSelected()
-		go library.CurrentSong.Play(settings.LibraryPath)
+		go library.CurrentSong.Play(player.SongControlChan)
 	}
 
 	return &l
@@ -268,11 +271,11 @@ func (l *LibraryView) UpdateSelected() {
 	l.LibraryList.Select(l.Library.CurrIdx)
 	l.LibraryList.Refresh()
 
-	currentSong := l.Library.GetCurrentSong()
-	l.SongDetailsView.TitleInput.SetText(currentSong.Title())
-	l.SongDetailsView.ArtistInput.SetText(currentSong.Artist())
-	l.SongDetailsView.AlbumInput.SetText(currentSong.Album())
-	l.SongDetailsView.GenreInput.SetText(currentSong.Genre())
+	currentSong := l.Library.CurrentSong
+	l.SongDetailsView.TitleInput.SetText(currentSong.Tag.Title())
+	l.SongDetailsView.ArtistInput.SetText(currentSong.Tag.Artist())
+	l.SongDetailsView.AlbumInput.SetText(currentSong.Tag.Album())
+	l.SongDetailsView.GenreInput.SetText(currentSong.Tag.Genre())
 	l.SongDetailsView.TitleInput.Refresh()
 	l.SongDetailsView.ArtistInput.Refresh()
 	l.SongDetailsView.AlbumInput.Refresh()
@@ -300,15 +303,8 @@ func NewSongDetailsView(labelText string) *SongDetailsView {
 
 	saveId3DataButton := widget.NewButton("Save", func() {
 		fmt.Println("TODO(map) Implement the song save here")
-		//     currentSong.SaveDetails(
-		//         titleInput.Text,
-		//         artistInput.Text,
-		//         albumInput.Text,
-		//         genreInput.Text,
-		//     )
 	})
 
-	// songDetailsContainer := container.New(layout.NewVBoxLayout(), detailsLabel, titleInput, artistInput, albumInput, genreInput)
 	songDetailsContainer := container.New(
 		layout.NewVBoxLayout(),
 		detailsLabel,
@@ -340,8 +336,8 @@ type MusicControls struct {
 }
 
 func NewMusicControls(
-	library *music.Library,
-	libraryView *LibraryView,
+	library *library.Library,
+	player *player.Player,
 	settings *pomoapp.Settings,
 	pomodoroTimer *pomodoro.PomodoroTimer,
 ) *MusicControls {
@@ -351,23 +347,8 @@ func NewMusicControls(
 			// Do nothing because we can't decrement
 			fmt.Println("Cannot go to previous song")
 		} else {
-			// Case of current song is actually playing and has a player attached
-			if library.CurrentSong.Player != nil {
-				// Close the current player
-				library.CurrentSong.Player.Close()
-
-				// TODO(map) This is totally not safe since it can go out of bounds. Temp measure
-				// Update the place in the library the song is playing
-				library.DecIndex()
-				libraryView.UpdateSelected()
-
-				// Start the song because the previous song was playing
-				go library.CurrentSong.Play(settings.LibraryPath)
-			} else {
-				// Otherwise just update and don't start paying automatically
-				library.DecIndex()
-				libraryView.UpdateSelected()
-			}
+			library.CurrentSong.Stop(true)
+			library.DecIndex()
 		}
 	})
 	playButton := widget.NewButton("Play", func() {
@@ -376,8 +357,8 @@ func NewMusicControls(
 		if library.CurrentSong.Player == nil {
 			log.Println("No song set, playing song...")
 
-			// Start the song because the previous song was playing
-			go library.CurrentSong.Play(settings.LibraryPath)
+			// Start the player
+			go player.Play(library, settings)
 
 			// Start the pomodoro timer if the timer and music controls are linked
 			if settings.LinkPlayers {
@@ -385,15 +366,15 @@ func NewMusicControls(
 			}
 		} else if library.CurrentSong.Player.IsPlaying() { // Case of song is currently playing
 			log.Println("Pausing song...")
-			library.CurrentSong.Pause()
-			library.CurrentSong.IsPaused = true
+			library.CurrentSong.Pause(player.SongControlChan)
 
 			// Pause the pomodoro timer if the timer and music controls are linked
-			pomodoroTimer.PauseTimer()
-		} else if !library.CurrentSong.Player.IsPlaying() && library.CurrentSong.IsPaused { // Case where song is paused
+			if settings.LinkPlayers {
+				pomodoroTimer.PauseTimer()
+			}
+		} else if !library.CurrentSong.Player.IsPlaying() { // Case where song is paused
 			log.Println("Resuming song...")
-			library.CurrentSong.Resume()
-			library.CurrentSong.IsPaused = false
+			library.CurrentSong.Resume(player.SongControlChan)
 
 			// Resume the pomodoro timer if the timer and music controls are linked
 			if settings.LinkPlayers {
@@ -403,7 +384,7 @@ func NewMusicControls(
 	})
 	stopButton := widget.NewButton("Stop", func() {
 		log.Println("Stop clicked")
-		library.CurrentSong.Stop()
+		library.CurrentSong.Stop(false)
 
 		// Pause the pomodoro timer if the timer and music controls are linked
 		if settings.LinkPlayers {
@@ -412,27 +393,12 @@ func NewMusicControls(
 	})
 	nextButton := widget.NewButton("Next", func() {
 		log.Println("Next clicked")
-		if library.CurrIdx+1 >= len(library.Songs) {
+		if !library.HasNextSong {
 			// Do nothing because we can't decrement
 			fmt.Println("Cannot go to next song")
 		} else {
-			// Case of current song is actually playing and has a player attached
-			if library.CurrentSong.Player != nil {
-				// Close the current player
-				library.CurrentSong.Stop()
-
-				// TODO(map) This is totally not safe since it can go out of bounds. Temp measure
-				// Update the place in the library the song is playing
-				library.IncIndex()
-				libraryView.UpdateSelected()
-
-				// Start the song because the previous song was playing
-				go library.CurrentSong.Play(settings.LibraryPath)
-			} else {
-				// Otherwise just update and don't start paying automatically
-				library.IncIndex()
-				libraryView.UpdateSelected()
-			}
+			library.CurrentSong.Stop(true)
+			library.IncIndex()
 		}
 	})
 

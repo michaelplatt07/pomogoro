@@ -3,7 +3,8 @@ package main
 import (
 	// Internal imports
 	"pomogoro/internal/gui"
-	"pomogoro/internal/music"
+	"pomogoro/internal/library"
+	"pomogoro/internal/player"
 	"pomogoro/internal/pomoapp"
 	"pomogoro/internal/pomodoro"
 
@@ -51,12 +52,15 @@ const (
 var settings = pomoapp.NewSettings(settingsFilePath, "", false, false, false)
 
 func main() {
+	// Load library
+	library := library.Library{}
+	library.LoadLibrary("/home/michael/Desktop/programming/pomogoro/library")
+
 	// Load the settings for the application
 	settings.Load()
 
-	// Read the library to load the songs into the application
-	library := music.Library{}
-	library.LoadLibrary(settings.LibraryPath)
+	// Load the player
+	player := player.Player{IsPlaying: false, IsPaused: false}
 
 	myApp := app.New()
 	window := myApp.NewWindow(titleText)
@@ -81,7 +85,7 @@ func main() {
 	songDetailsView := gui.NewSongDetailsView(detailsLabelText)
 
 	// Library View
-	libraryView := gui.NewLibraryView(libraryListLabelText, &library, songDetailsView, settings)
+	libraryView := gui.NewLibraryView(libraryListLabelText, &library, songDetailsView, settings, &player)
 
 	// Info
 	descriptionRow := container.New(
@@ -90,7 +94,7 @@ func main() {
 		currentSongPlayingContainer,
 	)
 	// Control
-	controls := gui.NewMusicControls(&library, libraryView, settings, pomodoroTimer)
+	controls := gui.NewMusicControls(&library, &player, settings, pomodoroTimer)
 
 	// Parent container
 	content := container.New(

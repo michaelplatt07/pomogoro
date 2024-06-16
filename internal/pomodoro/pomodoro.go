@@ -3,7 +3,7 @@ package pomodoro
 import (
 	"fmt"
 	"image/color"
-	"pomogoro/internal/music"
+	"pomogoro/internal/library"
 	"pomogoro/internal/pomoapp"
 	"time"
 
@@ -37,7 +37,7 @@ type PomodoroTimer struct {
 	PomodoroTimerCanvas PomodoroTimerCanvas // Canvas to draw the timer and access all components
 }
 
-func NewPomodoroTimer(library *music.Library, settings *pomoapp.Settings) *PomodoroTimer {
+func NewPomodoroTimer(library *library.Library, settings *pomoapp.Settings) *PomodoroTimer {
 	pt := &PomodoroTimer{
 		IsRunning:   false,
 		InBreakMode: false,
@@ -54,7 +54,6 @@ func (pt *PomodoroTimer) StartTimer() {
 	for pt.IsRunning && pt.PomodoroSettings.IterationCount < pt.PomodoroSettings.Iterations {
 		if pt.CurrentTimer > 0 {
 			// Update timer
-			fmt.Printf("Current timer = %d", pt.CurrentTimer)
 			time.Sleep(time.Second * 1)
 			pt.CurrentTimer -= 1
 			pt.UpdateTimerText()
@@ -135,7 +134,7 @@ func (pt *PomodoroTimer) UpdateIterationText() {
 	pt.PomodoroTimerCanvas.IterationText.Refresh()
 }
 
-func (pt *PomodoroTimer) CreateDefaultCanvas(library *music.Library, settings *pomoapp.Settings) {
+func (pt *PomodoroTimer) CreateDefaultCanvas(library *library.Library, settings *pomoapp.Settings) {
 	circleContainer := container.New(
 		layout.NewGridWrapLayout(fyne.NewSize(300, 300)),
 		canvas.NewCircle(color.RGBA{0, 0, 0, 255}),
@@ -162,20 +161,12 @@ func (pt *PomodoroTimer) CreateDefaultCanvas(library *music.Library, settings *p
 		if !pt.IsRunning {
 			go pt.StartTimer()
 			if settings.LinkPlayers {
-				// TODO(map) Maybe this is bad to assume that there is no player if the song is not Paused because it
-				// can't have started then
-				if library.CurrentSong.IsPaused {
-					library.CurrentSong.Resume()
-					library.CurrentSong.IsPaused = false
-				} else {
-					go library.CurrentSong.Play(settings.LibraryPath)
-				}
+				// TODO(map) Re-add code to have the players linked
 			}
 		} else {
 			pt.PauseTimer()
 			if settings.LinkPlayers {
-				library.CurrentSong.Pause()
-				library.CurrentSong.IsPaused = true
+				// TODO(map) Re-add code to have the players linked
 			}
 		}
 	})
