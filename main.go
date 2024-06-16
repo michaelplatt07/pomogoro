@@ -96,7 +96,7 @@ func main() {
 	// Control
 	controls := gui.NewMusicControls(&library, &player, settings, pomodoroTimer)
 
-	// // Parent container
+	// Parent container
 	content := container.New(
 		layout.NewVBoxLayout(),
 		toolbar,
