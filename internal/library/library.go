@@ -3,7 +3,6 @@ package library
 import (
 	"log"
 	"os"
-	"time"
 
 	// Internal imports
 	"pomogoro/internal/song"
@@ -15,13 +14,11 @@ type Library struct {
 	CurrentSong        *song.Song
 	CurrIdx            int
 	PlayingCurrentSong bool
-	PlayNextSongChan   chan bool
 	PlayNextSong       bool
 	HasNextSong        bool
 }
 
 func (library *Library) LoadLibrary(pathToLibrary string) {
-	library.PlayNextSongChan = make(chan bool)
 	library.LibraryPath = pathToLibrary
 	songs, err := os.ReadDir(pathToLibrary)
 	if err != nil {
@@ -47,28 +44,20 @@ func (library *Library) LoadLibrary(pathToLibrary string) {
 	library.HasNextSong = true
 }
 
-func (library *Library) PlayLibrary() {
-	library.PlayingCurrentSong = true
-	go library.CurrentSong.Play(library.PlayNextSongChan)
-	for library.HasNextSong {
-		time.Sleep(time.Second)
-		select {
-		case <-library.PlayNextSongChan:
-			library.CurrIdx = library.CurrIdx + 1
-			if library.CurrIdx >= len(library.Songs) {
-				library.HasNextSong = false
-			} else {
-				library.CurrentSong = library.Songs[library.CurrIdx]
-				go library.CurrentSong.Play(library.PlayNextSongChan)
-			}
-		}
+func (library *Library) DecIndex() {
+	if library.CurrIdx-1 > 0 {
+		library.CurrIdx = library.CurrIdx - 1
+		library.CurrentSong = library.Songs[library.CurrIdx]
+		library.HasNextSong = true
 	}
 }
 
-func (library *Library) DecIndex() {
-	// TODO(map) Implement me
-}
-
 func (library *Library) IncIndex() {
-	// TODO(map) Implement me
+	library.CurrIdx = library.CurrIdx + 1
+	library.CurrentSong = library.Songs[library.CurrIdx]
+	if library.CurrIdx >= len(library.Songs)-1 {
+		library.HasNextSong = false
+	} else {
+		library.HasNextSong = true
+	}
 }

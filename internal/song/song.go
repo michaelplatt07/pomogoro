@@ -1,9 +1,13 @@
 package song
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"time"
+
+	// Internal imports
+	"pomogoro/internal/messages"
 
 	// MP3 imports
 	"github.com/hajimehoshi/go-mp3"
@@ -16,7 +20,7 @@ import (
 type Song struct {
 	Name     string
 	FilePath string
-	IsPaused bool
+	Skipped  bool
 	Tag      *id3v2.Tag
 
 	// Used just for accessing the player for functionality. The file has to be opened and be streamed so having an
@@ -34,11 +38,10 @@ func NewSong(libraryPath string, songName string) *Song {
 	return &Song{
 		Name:     songName,
 		FilePath: libraryPath + "/" + songName,
-		IsPaused: false,
 	}
 }
 
-func (song *Song) Play(playNextSongChan chan bool) {
+func (song *Song) Play(songControlsChan chan messages.ChannelMessage) {
 	// Open the file to stream the contents
 	f, err := os.Open(song.FilePath)
 	if err != nil {
@@ -66,25 +69,47 @@ func (song *Song) Play(playNextSongChan chan bool) {
 	// Wait for the song to finish playing
 	for {
 		time.Sleep(time.Second)
-		if !song.Player.IsPlaying() && !song.IsPaused {
+		if song.Skipped {
+			// Reset skipped flag and published the skipped message
+			song.Skipped = false
+			songControlsChan <- messages.ChannelMessage{SongSkipped: true}
 			break
+		} else if song.Player == nil {
+			// Song was stopped so we published stopped message
+			fmt.Println("Publishing stopped message")
+			songControlsChan <- messages.ChannelMessage{SongStopped: true}
+			fmt.Println("Published stopped message")
+			break
+		} else if !song.Player.IsPlaying() {
+			// The song was ended by playing to completion and we should publish the message and break
+			if song.Player.UnplayedBufferSize() == 0 {
+				fmt.Println("Publishing completed message")
+				songControlsChan <- messages.ChannelMessage{SongFinished: true}
+				fmt.Println("Published completed message")
+				break
+			}
 		}
 	}
-
-	// Write to channel that song ended
-	playNextSongChan <- true
 }
 
-func (song *Song) Resume() {
+func (song *Song) Resume(songControlsChan chan messages.ChannelMessage) {
 	song.Player.Play()
-	song.IsPaused = false
+	fmt.Println("Publishing resume message...")
+	songControlsChan <- messages.ChannelMessage{SongResumed: true}
+	fmt.Println("Published resume message...")
 }
 
-func (song *Song) Pause() {
+func (song *Song) Pause(songControlsChan chan messages.ChannelMessage) {
 	song.Player.Pause()
-	song.IsPaused = true
+	fmt.Println("Publishing pause message...")
+	songControlsChan <- messages.ChannelMessage{SongPaused: true}
+	fmt.Println("Published pause message...")
 }
 
-func (song *Song) Stop() {
-	// TODO(map) Implement me
+func (song *Song) Stop(skipped bool) {
+	if song.Player != nil {
+		song.Player.Close()
+	}
+	song.Player = nil
+	song.Skipped = skipped
 }

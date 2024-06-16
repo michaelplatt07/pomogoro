@@ -4,6 +4,7 @@ import (
 	// Internal imports
 	"pomogoro/internal/gui"
 	"pomogoro/internal/library"
+	"pomogoro/internal/player"
 	"pomogoro/internal/pomoapp"
 	"pomogoro/internal/pomodoro"
 
@@ -12,6 +13,7 @@ import (
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/layout"
+	"fyne.io/fyne/v2/widget"
 )
 
 // TODO(map) List of things to correct
@@ -50,54 +52,57 @@ const (
 var settings = pomoapp.NewSettings(settingsFilePath, "", false, false, false)
 
 func main() {
+	// Load library
 	library := library.Library{}
 	library.LoadLibrary("/home/michael/Desktop/programming/pomogoro/library")
-	// library.PlayLibrary()
 
 	// Load the settings for the application
 	settings.Load()
+
+	// Load the player
+	player := player.Player{IsPlaying: false, IsPaused: false}
 
 	myApp := app.New()
 	window := myApp.NewWindow(titleText)
 	pomodoroTimer := pomodoro.NewPomodoroTimer(&library, settings)
 
-	// // Toolbar
-	// toolbar := gui.CreateNewToolbar(myApp, pomodoroTimer, settings)
-	//
-	// // About info
-	// descriptionLabel := widget.NewLabel(descriptionText)
-	// currentSongPlaying := widget.NewLabel("Currently Playing:")
-	// descriptionLabelContainer := container.New(
-	// 	layout.NewGridWrapLayout(fyne.NewSize(300, 50)),
-	// 	descriptionLabel,
-	// )
-	// currentSongPlayingContainer := container.New(
-	// 	layout.NewGridWrapLayout(fyne.NewSize(400, 50)),
-	// 	currentSongPlaying,
-	// )
-	//
-	// // Song details view
-	// songDetailsView := gui.NewSongDetailsView(detailsLabelText)
-	//
-	// // Library View
-	// libraryView := gui.NewLibraryView(libraryListLabelText, &library, songDetailsView, settings)
-	//
-	// // Info
-	// descriptionRow := container.New(
-	// 	layout.NewHBoxLayout(),
-	// 	descriptionLabelContainer,
-	// 	currentSongPlayingContainer,
-	// )
+	// Toolbar
+	toolbar := gui.CreateNewToolbar(myApp, pomodoroTimer, settings)
+
+	// About info
+	descriptionLabel := widget.NewLabel(descriptionText)
+	currentSongPlaying := widget.NewLabel("Currently Playing:")
+	descriptionLabelContainer := container.New(
+		layout.NewGridWrapLayout(fyne.NewSize(300, 50)),
+		descriptionLabel,
+	)
+	currentSongPlayingContainer := container.New(
+		layout.NewGridWrapLayout(fyne.NewSize(400, 50)),
+		currentSongPlaying,
+	)
+
+	// Song details view
+	songDetailsView := gui.NewSongDetailsView(detailsLabelText)
+
+	// Library View
+	libraryView := gui.NewLibraryView(libraryListLabelText, &library, songDetailsView, settings, &player)
+
+	// Info
+	descriptionRow := container.New(
+		layout.NewHBoxLayout(),
+		descriptionLabelContainer,
+		currentSongPlayingContainer,
+	)
 	// Control
-	controls := gui.NewMusicControls(&library, settings, pomodoroTimer)
+	controls := gui.NewMusicControls(&library, &player, settings, pomodoroTimer)
 
 	// // Parent container
 	content := container.New(
 		layout.NewVBoxLayout(),
-		// 	toolbar,
+		toolbar,
 		pomodoroTimer.PomodoroTimerCanvas.TopLevelContainer,
-		// 	descriptionRow,
-		// 	libraryView.Container,
+		descriptionRow,
+		libraryView.Container,
 		controls.Container,
 	)
 

@@ -54,7 +54,6 @@ func (pt *PomodoroTimer) StartTimer() {
 	for pt.IsRunning && pt.PomodoroSettings.IterationCount < pt.PomodoroSettings.Iterations {
 		if pt.CurrentTimer > 0 {
 			// Update timer
-			fmt.Printf("Current timer = %d", pt.CurrentTimer)
 			time.Sleep(time.Second * 1)
 			pt.CurrentTimer -= 1
 			pt.UpdateTimerText()
@@ -162,20 +161,12 @@ func (pt *PomodoroTimer) CreateDefaultCanvas(library *library.Library, settings 
 		if !pt.IsRunning {
 			go pt.StartTimer()
 			if settings.LinkPlayers {
-				// TODO(map) Maybe this is bad to assume that there is no player if the song is not Paused because it
-				// can't have started then
-				if library.CurrentSong.IsPaused {
-					library.CurrentSong.Resume()
-					library.CurrentSong.IsPaused = false
-				} else {
-					go library.CurrentSong.Play(library.PlayNextSongChan)
-				}
+				// TODO(map) Re-add code to have the players linked
 			}
 		} else {
 			pt.PauseTimer()
 			if settings.LinkPlayers {
-				library.CurrentSong.Pause()
-				library.CurrentSong.IsPaused = true
+				// TODO(map) Re-add code to have the players linked
 			}
 		}
 	})
