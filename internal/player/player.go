@@ -30,8 +30,13 @@ func (player *Player) Play(library *library.Library, settings *pomoapp.Settings)
 			fmt.Println("Got message = ", message)
 			if message.SongFinished == true {
 				fmt.Println("Song finished message received")
-				if library.HasNextSong && settings.AutoPlay {
+				if library.HasNextSong && settings.AutoPlay && !settings.Shuffle {
 					library.IncIndex()
+					fmt.Println("Starting next song...")
+					go library.CurrentSong.Play(player.SongControlChan)
+					fmt.Println("Started next song...")
+				} else if library.HasNextSong && settings.AutoPlay && settings.Shuffle {
+					library.NextShuffle()
 					fmt.Println("Starting next song...")
 					go library.CurrentSong.Play(player.SongControlChan)
 					fmt.Println("Started next song...")

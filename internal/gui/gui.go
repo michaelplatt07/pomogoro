@@ -346,6 +346,9 @@ func NewMusicControls(
 		if library.CurrIdx == 0 {
 			// Do nothing because we can't decrement
 			fmt.Println("Cannot go to previous song")
+		} else if settings.Shuffle {
+			library.CurrentSong.Stop(true)
+			library.NextShuffle()
 		} else {
 			library.CurrentSong.Stop(true)
 			library.DecIndex()
@@ -396,6 +399,9 @@ func NewMusicControls(
 		if !library.HasNextSong {
 			// Do nothing because we can't decrement
 			fmt.Println("Cannot go to next song")
+		} else if settings.Shuffle {
+			library.CurrentSong.Stop(true)
+			library.NextShuffle()
 		} else {
 			library.CurrentSong.Stop(true)
 			library.IncIndex()

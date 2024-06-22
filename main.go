@@ -52,12 +52,12 @@ const (
 var settings = pomoapp.NewSettings(settingsFilePath, "", false, false, false)
 
 func main() {
-	// Load library
-	library := library.Library{}
-	library.LoadLibrary("/home/michael/Desktop/programming/pomogoro/library")
-
 	// Load the settings for the application
 	settings.Load()
+
+	// Load library
+	library := library.Library{}
+	library.LoadLibrary("/home/michael/Desktop/programming/pomogoro/library", settings)
 
 	// Load the player
 	player := player.Player{IsPlaying: false, IsPaused: false}
